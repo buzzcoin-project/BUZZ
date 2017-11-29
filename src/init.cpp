@@ -6,12 +6,12 @@
 #include "init.h"
 #include "main.h"
 #include "chainparams.h"
+#include "script.h"
 #include "txdb.h"
 #include "rpcserver.h"
 #include "net.h"
 #include "util.h"
 #include "ui_interface.h"
-#include "checkpoints.h"
 #ifdef ENABLE_WALLET
 #include "wallet.h"
 #include "walletdb.h"
@@ -37,12 +37,10 @@ CWallet* pwalletMain = NULL;
 #endif
 CClientUIInterface uiInterface;
 bool fConfChange;
-bool fMinimizeCoinAge;
 unsigned int nNodeLifespan;
 unsigned int nDerivationMethodIndex;
 unsigned int nMinerSleep;
 bool fUseFastIndex;
-enum Checkpoints::CPMode CheckpointsMode;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -181,13 +179,11 @@ std::string HelpMessage()
     strUsage += "  -externalip=<ip>       " + _("Specify your own public address") + "\n";
     strUsage += "  -onlynet=<net>         " + _("Only connect to nodes in network <net> (IPv4, IPv6 or Tor)") + "\n";
     strUsage += "  -discover              " + _("Discover own IP address (default: 1 when listening and no -externalip)") + "\n";
-    strUsage += "  -irc                   " + _("Find peers using internet relay chat (default: 0)") + "\n";
     strUsage += "  -listen                " + _("Accept connections from outside (default: 1 if no -proxy or -connect)") + "\n";
     strUsage += "  -bind=<addr>           " + _("Bind to given address. Use [host]:port notation for IPv6") + "\n";
     strUsage += "  -dnsseed               " + _("Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect)") + "\n";
     strUsage += "  -forcednsseed          " + _("Always query for peer addresses via DNS lookup (default: 0)") + "\n";
     strUsage += "  -synctime              " + _("Sync time with other nodes. Disable if time on your system is precise e.g. syncing with NTP (default: 1)") + "\n";
-    strUsage += "  -cppolicy              " + _("Sync checkpoints policy (default: strict)") + "\n";
     strUsage += "  -banscore=<n>          " + _("Threshold for disconnecting misbehaving peers (default: 100)") + "\n";
     strUsage += "  -bantime=<n>           " + _("Number of seconds to keep misbehaving peers from reconnecting (default: 86400)") + "\n";
     strUsage += "  -maxreceivebuffer=<n>  " + _("Maximum per-connection receive buffer, <n>*1000 bytes (default: 5000)") + "\n";
@@ -239,7 +235,6 @@ std::string HelpMessage()
     strUsage += "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n";
     strUsage += "  -walletnotify=<cmd>    " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n";
     strUsage += "  -confchange            " + _("Require a confirmations for change (default: 0)") + "\n";
-    strUsage += "  -minimizecoinage       " + _("Minimize weight consumption (experimental) (default: 0)") + "\n";
     strUsage += "  -alertnotify=<cmd>     " + _("Execute command when a relevant alert is received (%s in cmd is replaced by message)") + "\n";
     strUsage += "  -upgradewallet         " + _("Upgrade wallet to latest format") + "\n";
     strUsage += "  -keypool=<n>           " + _("Set key pool size to <n> (default: 100)") + "\n";
@@ -250,10 +245,11 @@ std::string HelpMessage()
     strUsage += "  -loadblock=<file>      " + _("Imports blocks from external blk000?.dat file") + "\n";
     strUsage += "  -maxorphanblocks=<n>   " + strprintf(_("Keep at most <n> unconnectable blocks in memory (default: %u)"), DEFAULT_MAX_ORPHAN_BLOCKS) + "\n";
 
+    strUsage += "  -datacarriersize       " + strprintf(_("Maximum size of data in data carrier transactions we relay and mine (default: %u)"), MAX_OP_RETURN_RELAY) + "\n";
+
     strUsage += "\n" + _("Block creation options:") + "\n";
     strUsage += "  -blockminsize=<n>      "   + _("Set minimum block size in bytes (default: 0)") + "\n";
     strUsage += "  -blockmaxsize=<n>      "   + _("Set maximum block size in bytes (default: 250000)") + "\n";
-    strUsage += "  -blockprioritysize=<n> "   + _("Set maximum size of high-priority/low-fee transactions in bytes (default: 27000)") + "\n";
 
     strUsage += "\n" + _("SSL options: (see the Bitcoin Wiki for SSL setup instructions)") + "\n";
     strUsage += "  -rpcssl                                  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n";
@@ -308,6 +304,14 @@ bool AppInit2(boost::thread_group& threadGroup)
     typedef BOOL (WINAPI *PSETPROCDEPPOL)(DWORD);
     PSETPROCDEPPOL setProcDEPPol = (PSETPROCDEPPOL)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "SetProcessDEPPolicy");
     if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
+
+    // Initialize Windows Sockets
+    WSADATA wsadata;
+    int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
+    if (ret != NO_ERROR)
+    {
+        return InitError(strprintf("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret));
+    }
 #endif
 #ifndef WIN32
     umask(077);
@@ -334,27 +338,10 @@ bool AppInit2(boost::thread_group& threadGroup)
     fUseFastIndex = GetBoolArg("-fastindex", true);
     nMinerSleep = GetArg("-minersleep", 500);
 
-    CheckpointsMode = Checkpoints::STRICT;
-    std::string strCpMode = GetArg("-cppolicy", "strict");
-
-    if(strCpMode == "strict")
-        CheckpointsMode = Checkpoints::STRICT;
-
-    if(strCpMode == "advisory")
-        CheckpointsMode = Checkpoints::ADVISORY;
-
-    if(strCpMode == "permissive")
-        CheckpointsMode = Checkpoints::PERMISSIVE;
-
     nDerivationMethodIndex = 0;
 
     if (!SelectParamsFromCommandLine()) {
         return InitError("Invalid combination of -testnet and -regtest.");
-    }
-
-    if (TestNet())
-    {
-        SoftSetBoolArg("-irc", true);
     }
 
     if (mapArgs.count("-bind")) {
@@ -448,7 +435,6 @@ bool AppInit2(boost::thread_group& threadGroup)
 #endif
 
     fConfChange = GetBoolArg("-confchange", false);
-    fMinimizeCoinAge = GetBoolArg("-minimizecoinage", false);
 
 #ifdef ENABLE_WALLET
     if (mapArgs.count("-mininput"))
@@ -457,6 +443,8 @@ bool AppInit2(boost::thread_group& threadGroup)
             return InitError(strprintf(_("Invalid amount for -mininput=<amount>: '%s'"), mapArgs["-mininput"]));
     }
 #endif
+
+    nMaxDatacarrierBytes = GetArg("-datacarriersize", nMaxDatacarrierBytes);
 
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log
 
@@ -485,6 +473,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
     LogPrintf("BuzzCoin version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
     LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
+    LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
     if (!fLogTimestamps)
         LogPrintf("Startup time: %s\n", DateTimeStrFormat("%x %H:%M:%S", GetTime()));
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
@@ -639,12 +628,6 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
     }
 #endif
-
-    if (mapArgs.count("-checkpointkey")) // ppcoin: checkpoint master priv key
-    {
-        if (!Checkpoints::SetCheckpointPrivKey(GetArg("-checkpointkey", "")))
-            InitError(_("Unable to sign checkpoint, wrong checkpointkey?\n"));
-    }
 
     BOOST_FOREACH(string strDest, mapMultiArgs["-seednode"])
         AddOneShot(strDest);

@@ -59,13 +59,12 @@ class COrphan
 public:
     CTransaction* ptx;
     set<uint256> setDependsOn;
-    double dPriority;
     double dFeePerKb;
 
     COrphan(CTransaction* ptxIn)
     {
         ptx = ptxIn;
-        dPriority = dFeePerKb = 0;
+        dFeePerKb = 0;
     }
 };
 
@@ -74,27 +73,14 @@ uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
  
-// We want to sort transactions by priority and fee, so:
-typedef boost::tuple<double, double, CTransaction*> TxPriority;
+// We want to sort transactions by fee, so:
+typedef boost::tuple<double, CTransaction*> TxPriority;
 class TxPriorityCompare
 {
-    bool byFee;
 public:
-    TxPriorityCompare(bool _byFee) : byFee(_byFee) { }
     bool operator()(const TxPriority& a, const TxPriority& b)
     {
-        if (byFee)
-        {
-            if (a.get<1>() == b.get<1>())
                 return a.get<0>() < b.get<0>();
-            return a.get<1>() < b.get<1>();
-        }
-        else
-        {
-            if (a.get<0>() == b.get<0>())
-                return a.get<1>() < b.get<1>();
-            return a.get<0>() < b.get<0>();
-        }
     }
 };
 
@@ -234,11 +220,10 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
             if (porphan)
             {
-                porphan->dPriority = dPriority;
                 porphan->dFeePerKb = dFeePerKb;
             }
             else
-                vecPriority.push_back(TxPriority(dPriority, dFeePerKb, &(*mi).second));
+                vecPriority.push_back(TxPriority(dFeePerKb, &(*mi).second));
         }
 
         // Collect transactions into block
@@ -246,17 +231,15 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
         uint64_t nBlockSize = 1000;
         uint64_t nBlockTx = 0;
         int nBlockSigOps = 100;
-        bool fSortedByFee = (nBlockPrioritySize <= 0);
 
-        TxPriorityCompare comparer(fSortedByFee);
+        TxPriorityCompare comparer;
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
         while (!vecPriority.empty())
         {
             // Take highest priority transaction off the priority queue:
-            double dPriority = vecPriority.front().get<0>();
-            double dFeePerKb = vecPriority.front().get<1>();
-            CTransaction& tx = *(vecPriority.front().get<2>());
+            double dFeePerKb = vecPriority.front().get<0>();
+            CTransaction& tx = *(vecPriority.front().get<1>());
 
             std::pop_heap(vecPriority.begin(), vecPriority.end(), comparer);
             vecPriority.pop_back();
@@ -279,18 +262,8 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
             int64_t nMinFee = GetMinFee(tx, nBlockSize, GMF_BLOCK);
 
             // Skip free transactions if we're past the minimum block size:
-            if (fSortedByFee && (dFeePerKb < nMinTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
+            if ((dFeePerKb < nMinTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
                 continue;
-
-            // Prioritize by fee once past the priority size or we run out of high-priority
-            // transactions:
-            if (!fSortedByFee &&
-                ((nBlockSize + nTxSize >= nBlockPrioritySize) || (dPriority < COIN * 144 / 250)))
-            {
-                fSortedByFee = true;
-                comparer = TxPriorityCompare(fSortedByFee);
-                std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
-            }
 
             // Connecting shouldn't fail due to dependency on other memory pool transactions
             // because we're already processing them in order of dependency
@@ -311,7 +284,8 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
             // Note that flags: we don't want to set mempool/IsStandard()
             // policy here, but we still have to ensure that the block we
             // create only contains transactions that are valid in new blocks.
-            if (!tx.ConnectInputs(txdb, mapInputs, mapTestPoolTmp, CDiskTxPos(1,1,1), pindexPrev, false, true, MANDATORY_SCRIPT_VERIFY_FLAGS))
+            uint64_t nBurnCoins = 0;
+            if (!tx.ConnectInputs(txdb, mapInputs, mapTestPoolTmp, CDiskTxPos(1,1,1), pindexPrev, nBurnCoins, false, true, MANDATORY_SCRIPT_VERIFY_FLAGS))
                 continue;
             mapTestPoolTmp[tx.GetHash()] = CTxIndex(CDiskTxPos(1,1,1), tx.vout.size());
             swap(mapTestPool, mapTestPoolTmp);
@@ -325,8 +299,8 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
 
             if (fDebug && GetBoolArg("-printpriority", false))
             {
-                LogPrintf("priority %.1f feeperkb %.1f txid %s\n",
-                       dPriority, dFeePerKb, tx.GetHash().ToString());
+                LogPrintf("feeperkb %.1f txid %s\n",
+                       dFeePerKb, tx.GetHash().ToString());
             }
 
             // Add transactions that depend on this one to the priority queue
@@ -340,7 +314,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, bool fProofOfStake, int64_t* pFe
                         porphan->setDependsOn.erase(hash);
                         if (porphan->setDependsOn.empty())
                         {
-                            vecPriority.push_back(TxPriority(porphan->dPriority, porphan->dFeePerKb, porphan->ptx));
+                            vecPriority.push_back(TxPriority(porphan->dFeePerKb, porphan->ptx));
                             std::push_heap(vecPriority.begin(), vecPriority.end(), comparer);
                         }
                     }

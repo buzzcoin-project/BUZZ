@@ -3,8 +3,6 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "init.h"
-#include "irc.h"
 #include "chainparams.h"
 #include "db.h"
 #include "net.h"
@@ -132,13 +130,10 @@ CAddress GetLocalAddress(const CNetAddr *paddrPeer)
 bool RecvLine(SOCKET hSocket, string& strLine)
 {
     strLine = "";
-    while (!ShutdownRequested())
+    while (true)
     {
         char c;
-        int nBytes = recv(hSocket, &c, 1, MSG_DONTWAIT);
-	if(ShutdownRequested())
-	    return false;
-
+        int nBytes = recv(hSocket, &c, 1, 0);
         if (nBytes > 0)
         {
             if (c == '\n')
@@ -180,7 +175,6 @@ bool RecvLine(SOCKET hSocket, string& strLine)
             }
         }
     }
-    return false;
 }
 
 int GetnScore(const CService& addr)
@@ -504,6 +498,7 @@ void CNode::copyStats(CNodeStats &stats)
     X(nLastSend);
     X(nLastRecv);
     X(nTimeConnected);
+    X(nTimeOffset);
     X(addrName);
     X(nVersion);
     X(strSubVer);
@@ -1018,9 +1013,7 @@ void ThreadMapPort()
         string strDesc = "BuzzCoin " + FormatFullVersion();
 
         try {
-          while (!ShutdownRequested()) {
-		boost::this_thread::interruption_point();
-
+          while (true) {
 #ifndef UPNPDISCOVER_SUCCESS
                 /* miniupnpc 1.5 */
                 r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
@@ -1235,8 +1228,7 @@ void ThreadOpenConnections()
         int nTries = 0;
         while (true)
         {
-            // use an nUnkBias between 10 (no outgoing connections) and 90 (8 outgoing connections)
-            CAddress addr = addrman.Select(10 + min(nOutbound,8)*10);
+            CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
@@ -1490,18 +1482,6 @@ bool BindListenPort(const CService &addrBind, string& strError)
     strError = "";
     int nOne = 1;
 
-#ifdef WIN32
-    // Initialize Windows Sockets
-    WSADATA wsadata;
-    int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
-    if (ret != NO_ERROR)
-    {
-        strError = strprintf("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
-        LogPrintf("%s\n", strError);
-        return false;
-    }
-#endif
-
     // Create socket for listening for incoming connections
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
@@ -1667,9 +1647,6 @@ void StartNode(boost::thread_group& threadGroup)
     // Map ports with UPnP
     MapPort(GetBoolArg("-upnp", USE_UPNP));
 #endif
-
-    // Get addresses from IRC and advertise ours
-    threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "irc", &ThreadIRCSeed));
 
     // Send and receive from sockets, accept connections
     threadGroup.create_thread(boost::bind(&TraceThread<void (*)()>, "net", &ThreadSocketHandler));

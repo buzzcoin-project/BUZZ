@@ -79,6 +79,7 @@ extern void ShutdownRPCMining();
 extern int64_t nWalletUnlockTime;
 extern int64_t AmountFromValue(const json_spirit::Value& value);
 extern json_spirit::Value ValueFromAmount(int64_t amount);
+extern json_spirit::Value ValueFromAmount(uint64_t amount);
 extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 
 extern double GetPoWMHashPS();
@@ -112,6 +113,8 @@ extern json_spirit::Value sendalert(const json_spirit::Array& params, bool fHelp
 
 extern json_spirit::Value getsubsidy(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getstakesubsidy(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value setstakesplitthreshold(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value getstakesplitthreshold(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getmininginfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getstakinginfo(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value checkkernel(const json_spirit::Array& params, bool fHelp);
@@ -126,6 +129,7 @@ extern json_spirit::Value setaccount(const json_spirit::Array& params, bool fHel
 extern json_spirit::Value getaccount(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getaddressesbyaccount(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value sendtoaddress(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value burn(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value signmessage(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value verifymessage(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value getreceivedbyaddress(const json_spirit::Array& params, bool fHelp);

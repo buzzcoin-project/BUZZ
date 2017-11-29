@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
+// Copyright (c) 2017 BUZZcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -94,6 +95,11 @@ int64_t AmountFromValue(const Value& value)
 }
 
 Value ValueFromAmount(int64_t amount)
+{
+    return (double)amount / (double)COIN;
+}
+
+Value ValueFromAmount(uint64_t amount)
 {
     return (double)amount / (double)COIN;
 }
@@ -256,6 +262,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getaccount",             &getaccount,             false,     false,     true },
     { "getaddressesbyaccount",  &getaddressesbyaccount,  true,      false,     true },
     { "sendtoaddress",          &sendtoaddress,          false,     false,     true },
+    { "burn",                   &burn,                   false,     false,     true },
     { "getreceivedbyaddress",   &getreceivedbyaddress,   false,     false,     true },
     { "getreceivedbyaccount",   &getreceivedbyaccount,   false,     false,     true },
     { "listreceivedbyaddress",  &listreceivedbyaddress,  false,     false,     true },
@@ -290,6 +297,8 @@ static const CRPCCommand vRPCCommands[] =
     { "settxfee",               &settxfee,               false,     false,     true },
     { "getsubsidy",             &getsubsidy,             true,      true,      false },
     { "getstakesubsidy",        &getstakesubsidy,        true,      true,      false },
+    { "setstakesplitthreshold", &setstakesplitthreshold, false,     false,     true },
+    { "getstakesplitthreshold", &getstakesplitthreshold, false,     false,     true },
     { "reservebalance",         &reservebalance,         false,     true,      true },
     { "checkwallet",            &checkwallet,            false,     true,      true },
     { "repairwallet",           &repairwallet,           false,     true,      true },

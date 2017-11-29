@@ -106,6 +106,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "stop", 0 },
     { "getaddednodeinfo", 0 },
     { "sendtoaddress", 1 },
+    { "burn", 1 },
     { "settxfee", 0 },
     { "getreceivedbyaddress", 1 },
     { "getreceivedbyaccount", 1 },
@@ -152,6 +153,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "importprivkey", 2 },
     { "checkkernel", 0 },
     { "checkkernel", 1 },
+    { "submitblock", 1 },
+    { "setstakesplitthreshold", 0 }
 };
 
 class CRPCConvertTable

@@ -13,6 +13,7 @@
 #include "script.h"
 #include "scrypt.h"
 
+#include <limits>
 #include <list>
 
 class CBlock;
@@ -51,14 +52,18 @@ inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MO
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 
-inline bool IsProtocolV1RetargetingFixed(int nHeight) { return TestNet() || nHeight > 0; }
-inline bool IsProtocolV2(int nHeight) { return TestNet() || nHeight > 0; }
+inline int64_t GetCoinYearReward(int nHeight) {
+    int64_t YearPercent = 1200;
 
-inline int64_t FutureDriftV1(int64_t nTime) { return nTime + 10 * 60; }
-inline int64_t FutureDriftV2(int64_t nTime) { return nTime + 120; }
-inline int64_t FutureDrift(int64_t nTime, int nHeight) { return IsProtocolV2(nHeight) ? FutureDriftV2(nTime) : FutureDriftV1(nTime); }
+    // Use for testnet specific validation
+    if (TestNet())
+        YearPercent = 1200;
 
-inline unsigned int GetTargetSpacing(int nHeight) { return IsProtocolV2(nHeight) ? 125 : 120; }
+    return YearPercent * CENT; // per year
+}
+inline int64_t FutureDrift(int64_t nTime) { return nTime + 10 * 60; }
+
+inline unsigned int GetTargetSpacing(int nHeight) { return 120; }
 
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
@@ -66,6 +71,7 @@ extern CTxMemPool mempool;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
 extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 extern CBlockIndex* pindexGenesisBlock;
+extern int nStakeMinConfirmations;
 extern unsigned int nStakeMinAge;
 extern unsigned int nNodeLifespan;
 extern int nCoinbaseMaturity;
@@ -88,8 +94,6 @@ extern bool fHaveGUI;
 // Settings
 extern bool fUseFastIndex;
 extern unsigned int nDerivationMethodIndex;
-
-extern bool fMinimizeCoinAge;
 
 // Minimum disk space required - used in CheckDiskSpace()
 static const uint64_t nMinDiskSpace = 52428800;
@@ -131,10 +135,11 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles);
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
 int64_t GetProofOfWorkReward(int64_t nFees);
-int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees);
-unsigned int ComputeMinWork(unsigned int nBase, int64_t nTime);
-unsigned int ComputeMinStake(unsigned int nBase, int64_t nTime, unsigned int nBlockTime);
+uint64_t GetProofOfStakeReward(const CBlockIndex* pindexPrev, uint64_t nCoinAge, int64_t nFees);
+CBigNum GetWeightSpent(CBlockIndex* pindex);
+CBigNum GetAverageWeightOverPeriod(int nBlocksCount);
 bool IsInitialBlockDownload();
+bool IsConfirmedInNPrevBlocks(const CTxIndex& txindex, const CBlockIndex* pindexFrom, int nMaxDepth, int& nActualDepth);
 std::string GetWarnings(std::string strFor);
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 uint256 WantedByOrphan(const COrphanBlock* pblockOrphan);
@@ -235,7 +240,7 @@ public:
     }
 
     CTransaction(int nVersion, unsigned int nTime, const std::vector<CTxIn>& vin, const std::vector<CTxOut>& vout, unsigned int nLockTime)
-    : nVersion(nVersion), nTime(nTime), vin(vin), vout(vout), nLockTime(nLockTime), nDoS(0)
+        : nVersion(nVersion), nTime(nTime), vin(vin), vout(vout), nLockTime(nLockTime), nDoS(0)
     {
     }
 
@@ -396,9 +401,10 @@ public:
      */
     bool ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                        std::map<uint256, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
-                       const CBlockIndex* pindexBlock, bool fBlock, bool fMiner, unsigned int flags = STANDARD_SCRIPT_VERIFY_FLAGS);
+                       const CBlockIndex* pindexBlock, uint64_t &nBurnCoins, bool fBlock,
+                       bool fMiner, unsigned int flags = STANDARD_SCRIPT_VERIFY_FLAGS);
     bool CheckTransaction() const;
-    bool GetCoinAge(CTxDB& txdb, uint64_t& nCoinAge) const;  // ppcoin: get transaction coin age
+    bool GetCoinAge(CTxDB& txdb, const CBlockIndex* pindexPrev, uint64_t& nCoinAge) const;  // ppcoin: get transaction coin age
 
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };
@@ -667,7 +673,7 @@ public:
     unsigned int GetStakeEntropyBit() const
     {
         // Take last bit of block hash as entropy bit
-        unsigned int nEntropyBit = ((GetHash().Get64()) & 1llu);
+        unsigned int nEntropyBit = ((GetHash().GetLow64()) & 1llu);
         LogPrint("stakemodifier", "GetStakeEntropyBit: hashBlock=%s nEntropyBit=%u\n", GetHash().ToString(), nEntropyBit);
         return nEntropyBit;
     }
@@ -863,7 +869,7 @@ public:
     int nHeight;
 
     int64_t nMint;
-    int64_t nMoneySupply;
+    uint64_t nMoneySupply;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum
@@ -872,8 +878,8 @@ public:
         BLOCK_STAKE_ENTROPY  = (1 << 1), // entropy bit for stake modifier
         BLOCK_STAKE_MODIFIER = (1 << 2), // regenerated stake modifier
     };
-
-    uint64_t nStakeModifier; // hash modifier for proof-of-stake
+    // BETA_QEUESTION: nStakeModifier changed from uint64_t, required?
+    uint256 nStakeModifier; // hash modifier for proof-of-stake
 
     // proof-of-stake specific fields
     COutPoint prevoutStake;
@@ -982,10 +988,7 @@ public:
 
     int64_t GetPastTimeLimit() const
     {
-        if (IsProtocolV2(nHeight))
-            return GetBlockTime() - 120;
-        else
-            return GetMedianTimePast();
+        return GetBlockTime();
     }
 
     enum { nMedianTimeSpan=11 };
@@ -1045,7 +1048,7 @@ public:
         return (nFlags & BLOCK_STAKE_MODIFIER);
     }
 
-    void SetStakeModifier(uint64_t nModifier, bool fGeneratedStakeModifier)
+    void SetStakeModifier(uint256 nModifier, bool fGeneratedStakeModifier)
     {
         nStakeModifier = nModifier;
         if (fGeneratedStakeModifier)
@@ -1054,11 +1057,11 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016x, hashProof=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%p, pnext=%p, nFile=%u, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%s, hashProof=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
             FormatMoney(nMint), FormatMoney(nMoneySupply),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
-            nStakeModifier,
+            nStakeModifier.ToString(),
             hashProof.ToString(),
             prevoutStake.ToString(), nStakeTime,
             hashMerkleRoot.ToString(),

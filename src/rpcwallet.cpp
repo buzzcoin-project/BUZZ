@@ -291,6 +291,31 @@ Value sendtoaddress(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+Value burn(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "burn <amount>\n"
+            "<amount> is a real and is rounded to the nearest 0.00000001"
+            + HelpRequiringPassphrase());
+
+    CScript scriptPubKey;
+    scriptPubKey = CScript() << OP_RETURN << OP_BURN;
+
+    // Amount
+    int64_t nAmount = AmountFromValue(params[0]);
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    CWalletTx wtx;
+    string strError = pwalletMain->SendMoney(scriptPubKey, nAmount, wtx);
+    if (strError != "")
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+
+    return wtx.GetHash().GetHex();
+}
+
 Value listaddressgroupings(const Array& params, bool fHelp)
 {
     if (fHelp)
@@ -488,7 +513,7 @@ Value getbalance(const Array& params, bool fHelp)
             "If [account] is specified, returns the balance in the account.");
 
     if (params.size() == 0)
-        return  ValueFromAmount(pwalletMain->GetBalance());
+        return ValueFromAmount(pwalletMain->GetBalance());
 
     int nMinDepth = 1;
     if (params.size() > 1)
@@ -519,7 +544,7 @@ Value getbalance(const Array& params, bool fHelp)
                 nBalance -= r.second;
             nBalance -= allFee;
         }
-        return  ValueFromAmount(nBalance);
+        return ValueFromAmount(nBalance);
     }
 
     accountingDeprecationCheck();
@@ -653,7 +678,7 @@ Value sendmany(const Array& params, bool fHelp)
     {
         CBitcoinAddress address(s.name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid BuzzCoin address: ")+s.name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid BuzzCoin address: ") + s.name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+s.name_);
@@ -678,7 +703,7 @@ Value sendmany(const Array& params, bool fHelp)
     // Send
     CReserveKey keyChange(pwalletMain);
     int64_t nFeeRequired = 0;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, 1);
     if (!fCreated)
     {
         if (totalAmount + nFeeRequired > pwalletMain->GetBalance())
@@ -1527,7 +1552,7 @@ Value repairwallet(const Array& params, bool fHelp)
     return result;
 }
 
-// NovaCoin: resend unconfirmed wallet transactions
+// InterstellarHoldings: resend unconfirmed wallet transactions
 Value resendtx(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
@@ -1553,7 +1578,7 @@ Value makekeypair(const Array& params, bool fHelp)
     string strPrefix = "";
     if (params.size() > 0)
         strPrefix = params[0].get_str();
- 
+
     CKey key;
     key.MakeNewKey(false);
 
@@ -1575,4 +1600,49 @@ Value settxfee(const Array& params, bool fHelp)
     nTransactionFee = (nTransactionFee / CENT) * CENT;  // round to cent
 
     return true;
+}
+
+Value setstakesplitthreshold(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "setstakesplitthreshold <amount>\n"
+            "This will set the output size of your stakes to never be below amount.\n");
+
+    int64_t nStakeSplitThreshold = params[0].get_int64();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Unlock wallet to use this feature.");
+    if (nStakeSplitThreshold > 999999999)
+        return "out of range (1 - 999999999) - setting split threshold failed";
+
+    CWalletDB walletdb(pwalletMain->strWalletFile);
+    LOCK(pwalletMain->cs_wallet);
+    {
+        bool fFileBacked = pwalletMain->fFileBacked;
+
+        Object result;
+        pwalletMain->nStakeSplitThreshold = nStakeSplitThreshold;
+        result.push_back(Pair("split stake threshold set to ", int(pwalletMain->nStakeSplitThreshold)));
+        if (fFileBacked) {
+            walletdb.WriteStakeSplitThreshold(nStakeSplitThreshold);
+            result.push_back(Pair("saved to wallet.dat ", "true"));
+        } else {
+            result.push_back(Pair("saved to wallet.dat ", "false"));
+        }
+
+        return result;
+    }
+}
+
+Value getstakesplitthreshold(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getstakesplitthreshold\n"
+            "Returns the current split stake threshold.\n");
+
+    Object result;
+    result.push_back(Pair("split stake threshold ", int(pwalletMain->nStakeSplitThreshold)));
+    return result;
 }

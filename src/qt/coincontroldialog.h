@@ -28,7 +28,6 @@ public:
 
     // static because also called from sendcoinsdialog
     static void updateLabels(WalletModel*, QDialog*);
-    static QString getPriorityLabel(double);
 
     static QList<qint64> payAmounts;
     static CCoinControl *coinControl;
@@ -42,8 +41,8 @@ private:
     QMenu *contextMenu;
     QTreeWidgetItem *contextMenuItem;
     QAction *copyTransactionHashAction;
-    //QAction *lockAction;
-    //QAction *unlockAction;
+    QAction *lockAction;
+    QAction *unlockAction;
 
     QString strPad(QString, int, QString);
     void sortView(int, Qt::SortOrder);
@@ -53,15 +52,19 @@ private:
     {
         COLUMN_CHECKBOX,
         COLUMN_AMOUNT,
+	    COLUMN_CONFIRMATIONS,
+		COLUMN_AGE,
+		COLUMN_POTENTIALSTAKE,
+		COLUMN_TIMEESTIMATE,
+        COLUMN_WEIGHT,
         COLUMN_LABEL,
         COLUMN_ADDRESS,
         COLUMN_DATE,
-        COLUMN_CONFIRMATIONS,
-        COLUMN_PRIORITY,
+		COLUMN_AGE_INT64,
+        COLUMN_POTENTIALSTAKE_INT64,
         COLUMN_TXHASH,
         COLUMN_VOUT_INDEX,
         COLUMN_AMOUNT_INT64,
-        COLUMN_PRIORITY_INT64
     };
 
 private slots:
@@ -70,14 +73,13 @@ private slots:
     void copyLabel();
     void copyAddress();
     void copyTransactionHash();
-    //void lockCoin();
-    //void unlockCoin();
+    void lockCoin();
+    void unlockCoin();
     void clipboardQuantity();
     void clipboardAmount();
     void clipboardFee();
     void clipboardAfterFee();
     void clipboardBytes();
-    void clipboardPriority();
     void clipboardLowOutput();
     void clipboardChange();
     void radioTreeMode(bool);
@@ -86,7 +88,8 @@ private slots:
     void headerSectionClicked(int);
     void buttonBoxClicked(QAbstractButton*);
     void buttonSelectAllClicked();
-    //void updateLabelLocked();
+    void customSelectCoins();
+    void updateLabelLocked();
 };
 
 #endif // COINCONTROLDIALOG_H

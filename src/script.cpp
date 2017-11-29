@@ -29,6 +29,7 @@ static const CBigNum bnFalse(0);
 static const CBigNum bnTrue(1);
 static const size_t nDefaultMaxNumSize = 4;
 
+unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
 CBigNum CastToBigNum(const valtype& vch, const size_t nMaxNumSize = nDefaultMaxNumSize)
 {
@@ -51,32 +52,6 @@ bool CastToBool(const valtype& vch)
         }
     }
     return false;
-}
-
-//
-// WARNING: This does not work as expected for signed integers; the sign-bit
-// is left in place as the integer is zero-extended. The correct behavior
-// would be to move the most significant bit of the last byte during the
-// resize process. MakeSameSize() is currently only used by the disabled
-// opcodes OP_AND, OP_OR, and OP_XOR.
-//
-void MakeSameSize(valtype& vch1, valtype& vch2)
-{
-    // Lengthen the shorter one
-    if (vch1.size() < vch2.size())
-        // PATCH:
-        // +unsigned char msb = vch1[vch1.size()-1];
-        // +vch1[vch1.size()-1] &= 0x7f;
-        //  vch1.resize(vch2.size(), 0);
-        // +vch1[vch1.size()-1] = msb;
-        vch1.resize(vch2.size(), 0);
-    if (vch2.size() < vch1.size())
-        // PATCH:
-        // +unsigned char msb = vch2[vch2.size()-1];
-        // +vch2[vch2.size()-1] &= 0x7f;
-        //  vch2.resize(vch1.size(), 0);
-        // +vch2[vch2.size()-1] = msb;
-        vch2.resize(vch1.size(), 0);
 }
 
 
@@ -149,6 +124,7 @@ const char* GetOpName(opcodetype opcode)
     case OP_ENDIF                  : return "OP_ENDIF";
     case OP_VERIFY                 : return "OP_VERIFY";
     case OP_RETURN                 : return "OP_RETURN";
+    case OP_BURN                   : return "OP_BURN";
 
     // stack ops
     case OP_TOALTSTACK             : return "OP_TOALTSTACK";
@@ -231,7 +207,7 @@ const char* GetOpName(opcodetype opcode)
 
     // expanson
     case OP_NOP1                   : return "OP_NOP1";
-    case OP_NOP2                   : return "OP_NOP2";
+    case OP_CHECKLOCKTIMEVERIFY    : return "OP_CHECKLOCKTIMEVERIFY";
     case OP_NOP3                   : return "OP_NOP3";
     case OP_NOP4                   : return "OP_NOP4";
     case OP_NOP5                   : return "OP_NOP5";
@@ -253,7 +229,7 @@ const char* GetOpName(opcodetype opcode)
     }
 }
 
-static bool IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
+bool IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
     if (vchPubKey.size() < 33)
         return error("Non-canonical public key: too short");
     if (vchPubKey[0] == 0x04) {
@@ -312,8 +288,8 @@ bool IsDERSignature(const valtype &vchSig, bool haveHashType) {
     return true;
 }
 
-bool static IsLowDERSignature(const valtype &vchSig) {
-    if (!IsDERSignature(vchSig)) {
+bool IsLowDERSignature(const valtype &vchSig, bool haveHashType) {
+    if (!IsDERSignature(vchSig, haveHashType)) {
         return false;
     }
     unsigned int nLenR = vchSig[3];
@@ -339,10 +315,15 @@ bool static IsDefinedHashtypeSignature(const valtype &vchSig) {
     return true;
 }
 
-bool static CheckSignatureEncoding(const valtype &vchSig) {
+bool static CheckSignatureEncoding(const valtype &vchSig, unsigned int flags) {
+    // Empty signature. Not strictly DER encoded, but allowed to provide a
+    // compact way to provide an invalid signature for use with CHECK(MULTI)SIG
+    if ((flags & SCRIPT_VERIFY_ALLOW_EMPTY_SIG) && vchSig.size() == 0) {
+        return true;
+    }
     if (!IsLowDERSignature(vchSig)) {
         return false;
-    } else if (!IsDefinedHashtypeSignature(vchSig)) {
+    } else if (!(flags & SCRIPT_VERIFY_FIX_HASHTYPE) && !IsDefinedHashtypeSignature(vchSig)) {
         return false;
     }
     return true;
@@ -352,6 +333,42 @@ bool static CheckPubKeyEncoding(const valtype &vchSig) {
     if (!IsCompressedOrUncompressedPubKey(vchSig)) {
         return false;
     }
+    return true;
+}
+
+static bool CheckLockTime(const CTransaction& txTo, unsigned int nIn, const CBigNum& nLockTime)
+{
+    // There are two times of nLockTime: lock-by-blockheight
+    // and lock-by-blocktime, distinguished by whether
+    // nLockTime < LOCKTIME_THRESHOLD.
+    //
+    // We want to compare apples to apples, so fail the script
+    // unless the type of nLockTime being tested is the same as
+    // the nLockTime in the transaction.
+    if (!(
+        (txTo.nLockTime <  LOCKTIME_THRESHOLD && nLockTime <  LOCKTIME_THRESHOLD) ||
+        (txTo.nLockTime >= LOCKTIME_THRESHOLD && nLockTime >= LOCKTIME_THRESHOLD)
+    ))
+        return false;
+
+    // Now that we know we're comparing apples-to-apples, the
+    // comparison is a simple numeric one.
+    if (nLockTime > (int64_t)txTo.nLockTime)
+        return false;
+
+    // Finally the nLockTime feature can be disabled and thus
+    // CHECKLOCKTIMEVERIFY bypassed if every txin has been
+    // finalized by setting nSequence to maxint. The
+    // transaction would be allowed into the blockchain, making
+    // the opcode ineffective.
+    //
+    // Testing if this vin is not final is sufficient to
+    // prevent this condition. Alternatively we could test all
+    // inputs, but testing just this input minimizes the data
+    // required to prove correct CHECKLOCKTIMEVERIFY execution.
+    if (txTo.vin[nIn].IsFinal())
+        return false;
+
     return true;
 }
 
@@ -401,7 +418,7 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 opcode == OP_MOD ||
                 opcode == OP_LSHIFT ||
                 opcode == OP_RSHIFT)
-                return false;
+                return false; // Disabled opcodes.
 
             if (fExec && 0 <= opcode && opcode <= OP_PUSHDATA4)
                 stack.push_back(vchPushValue);
@@ -442,7 +459,49 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 case OP_NOP:
                 break;
 
-                case OP_NOP1: case OP_NOP2: case OP_NOP3: case OP_NOP4: case OP_NOP5:
+                case OP_CHECKLOCKTIMEVERIFY:
+                {
+                    if (!(flags & SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY)) {
+                        // not enabled; treat as a NOP2
+                        if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS) {
+                            return false;
+                        }
+                        break;
+                    }
+
+                    if (stack.size() < 1)
+                        return false;
+
+                    // Note that elsewhere numeric opcodes are limited to
+                    // operands in the range -2**31+1 to 2**31-1, however it is
+                    // legal for opcodes to produce results exceeding that
+                    // range. This limitation is implemented by CScriptNum's
+                    // default 4-byte limit.
+                    //
+                    // If we kept to that limit we'd have a year 2038 problem,
+                    // even though the nLockTime field in transactions
+                    // themselves is uint32 which only becomes meaningless
+                    // after the year 2106.
+                    //
+                    // Thus as a special case we tell CScriptNum to accept up
+                    // to 5-byte bignums, which are good until 2**32-1, the
+                    // same limit as the nLockTime field itself.
+                    const CBigNum nLockTime = CastToBigNum(stacktop(-1), 5);
+
+                    // In the rare event that the argument may be < 0 due to
+                    // some arithmetic being done first, you can always use
+                    // 0 MAX CHECKLOCKTIMEVERIFY.
+                    if (nLockTime < 0)
+                        return false;
+
+                    // Actually compare the specified lock time with the transaction.
+                    if (!CheckLockTime(txTo, nIn, nLockTime))
+                        return false;
+
+                    break;
+                }
+
+                case OP_NOP1: case OP_NOP3: case OP_NOP4: case OP_NOP5:
                 case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
                 {
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
@@ -705,64 +764,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 break;
 
 
-                //
-                // Splice ops
-                //
-                case OP_CAT:
-                {
-                    // (x1 x2 -- out)
-                    if (stack.size() < 2)
-                        return false;
-                    valtype& vch1 = stacktop(-2);
-                    valtype& vch2 = stacktop(-1);
-                    vch1.insert(vch1.end(), vch2.begin(), vch2.end());
-                    popstack(stack);
-                    if (stacktop(-1).size() > MAX_SCRIPT_ELEMENT_SIZE)
-                        return false;
-                }
-                break;
-
-                case OP_SUBSTR:
-                {
-                    // (in begin size -- out)
-                    if (stack.size() < 3)
-                        return false;
-                    valtype& vch = stacktop(-3);
-                    int nBegin = CastToBigNum(stacktop(-2)).getint();
-                    int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint();
-                    if (nBegin < 0 || nEnd < nBegin)
-                        return false;
-                    if (nBegin > (int)vch.size())
-                        nBegin = vch.size();
-                    if (nEnd > (int)vch.size())
-                        nEnd = vch.size();
-                    vch.erase(vch.begin() + nEnd, vch.end());
-                    vch.erase(vch.begin(), vch.begin() + nBegin);
-                    popstack(stack);
-                    popstack(stack);
-                }
-                break;
-
-                case OP_LEFT:
-                case OP_RIGHT:
-                {
-                    // (in size -- out)
-                    if (stack.size() < 2)
-                        return false;
-                    valtype& vch = stacktop(-2);
-                    int nSize = CastToBigNum(stacktop(-1)).getint();
-                    if (nSize < 0)
-                        return false;
-                    if (nSize > (int)vch.size())
-                        nSize = vch.size();
-                    if (opcode == OP_LEFT)
-                        vch.erase(vch.begin() + nSize, vch.end());
-                    else
-                        vch.erase(vch.begin(), vch.end() - nSize);
-                    popstack(stack);
-                }
-                break;
-
                 case OP_SIZE:
                 {
                     // (in -- in size)
@@ -777,51 +778,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 //
                 // Bitwise logic
                 //
-                case OP_INVERT:
-                {
-                    // (in - out)
-                    if (stack.size() < 1)
-                        return false;
-                    valtype& vch = stacktop(-1);
-                    for (unsigned int i = 0; i < vch.size(); i++)
-                        vch[i] = ~vch[i];
-                }
-                break;
-
-                //
-                // WARNING: These disabled opcodes exhibit unexpected behavior
-                // when used on signed integers due to a bug in MakeSameSize()
-                // [see definition of MakeSameSize() above].
-                //
-                case OP_AND:
-                case OP_OR:
-                case OP_XOR:
-                {
-                    // (x1 x2 - out)
-                    if (stack.size() < 2)
-                        return false;
-                    valtype& vch1 = stacktop(-2);
-                    valtype& vch2 = stacktop(-1);
-                    MakeSameSize(vch1, vch2); // <-- NOT SAFE FOR SIGNED VALUES
-                    if (opcode == OP_AND)
-                    {
-                        for (unsigned int i = 0; i < vch1.size(); i++)
-                            vch1[i] &= vch2[i];
-                    }
-                    else if (opcode == OP_OR)
-                    {
-                        for (unsigned int i = 0; i < vch1.size(); i++)
-                            vch1[i] |= vch2[i];
-                    }
-                    else if (opcode == OP_XOR)
-                    {
-                        for (unsigned int i = 0; i < vch1.size(); i++)
-                            vch1[i] ^= vch2[i];
-                    }
-                    popstack(stack);
-                }
-                break;
-
                 case OP_EQUAL:
                 case OP_EQUALVERIFY:
                 //case OP_NOTEQUAL: // use OP_NUMNOTEQUAL
@@ -856,8 +812,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                 //
                 case OP_1ADD:
                 case OP_1SUB:
-                case OP_2MUL:
-                case OP_2DIV:
                 case OP_NEGATE:
                 case OP_ABS:
                 case OP_NOT:
@@ -871,8 +825,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                     {
                     case OP_1ADD:       bn += bnOne; break;
                     case OP_1SUB:       bn -= bnOne; break;
-                    case OP_2MUL:       bn <<= 1; break;
-                    case OP_2DIV:       bn >>= 1; break;
                     case OP_NEGATE:     bn = -bn; break;
                     case OP_ABS:        if (bn < bnZero) bn = -bn; break;
                     case OP_NOT:        bn = (bn == bnZero); break;
@@ -886,11 +838,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
 
                 case OP_ADD:
                 case OP_SUB:
-                case OP_MUL:
-                case OP_DIV:
-                case OP_MOD:
-                case OP_LSHIFT:
-                case OP_RSHIFT:
                 case OP_BOOLAND:
                 case OP_BOOLOR:
                 case OP_NUMEQUAL:
@@ -917,33 +864,6 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
 
                     case OP_SUB:
                         bn = bn1 - bn2;
-                        break;
-
-                    case OP_MUL:
-                        if (!BN_mul(&bn, &bn1, &bn2, pctx))
-                            return false;
-                        break;
-
-                    case OP_DIV:
-                        if (!BN_div(&bn, NULL, &bn1, &bn2, pctx))
-                            return false;
-                        break;
-
-                    case OP_MOD:
-                        if (!BN_mod(&bn, &bn1, &bn2, pctx))
-                            return false;
-                        break;
-
-                    case OP_LSHIFT:
-                        if (bn2 < bnZero || bn2 > CBigNum(2048))
-                            return false;
-                        bn = bn1 << bn2.getulong();
-                        break;
-
-                    case OP_RSHIFT:
-                        if (bn2 < bnZero || bn2 > CBigNum(2048))
-                            return false;
-                        bn = bn1 >> bn2.getulong();
                         break;
 
                     case OP_BOOLAND:             bn = (bn1 != bnZero && bn2 != bnZero); break;
@@ -1048,10 +968,10 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                     // Drop the signature, since there's no way for a signature to sign itself
                     scriptCode.FindAndDelete(CScript(vchSig));
 
-                    if ((flags & SCRIPT_VERIFY_STRICTENC) && (!CheckSignatureEncoding(vchSig) || !CheckPubKeyEncoding(vchPubKey)))
+                    if ((flags & SCRIPT_VERIFY_STRICTENC) && (!CheckSignatureEncoding(vchSig, flags) || !CheckPubKeyEncoding(vchPubKey)))
                         return false;
 
-                    bool fSuccess = CheckSignatureEncoding(vchSig) && CheckPubKeyEncoding(vchPubKey) &&
+                    bool fSuccess = CheckSignatureEncoding(vchSig, flags) && CheckPubKeyEncoding(vchPubKey) &&
                         CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType, flags);
 
                     popstack(stack);
@@ -1111,11 +1031,11 @@ bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, co
                         valtype& vchSig    = stacktop(-isig);
                         valtype& vchPubKey = stacktop(-ikey);
 
-                        if ((flags & SCRIPT_VERIFY_STRICTENC) && (!CheckSignatureEncoding(vchSig) || !CheckPubKeyEncoding(vchPubKey)))
+                        if ((flags & SCRIPT_VERIFY_STRICTENC) && (!CheckSignatureEncoding(vchSig, flags) || !CheckPubKeyEncoding(vchPubKey)))
                             return false;
 
                         // Check signature
-                        bool fOk = CheckSignatureEncoding(vchSig) && CheckPubKeyEncoding(vchPubKey) &&
+                        bool fOk = CheckSignatureEncoding(vchSig, flags) && CheckPubKeyEncoding(vchPubKey) &&
                             CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType, flags);
 
                         if (fOk)
@@ -1454,8 +1374,8 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             }
             else if (opcode2 == OP_SMALLDATA)
             {
-                // small pushdata, <= MAX_OP_RETURN_RELAY bytes
-                if (vch1.size() > MAX_OP_RETURN_RELAY)
+                // small pushdata, <= nMaxDatacarrierBytes
+                if (vch1.size() > nMaxDatacarrierBytes)
                     break;
             }
             else if (opcode1 != opcode2 || vch1 != vch2)

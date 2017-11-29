@@ -53,4 +53,8 @@ static const int BIP0031_VERSION = 60000;
 // "mempool" command, enhanced "getdata" behavior starts with this version:
 static const int MEMPOOL_GD_VERSION = 60002;
 
+// reject blocks with non-canonical signatures starting from this version
+static const int CANONICAL_BLOCK_SIG_VERSION = 60016;
+static const int CANONICAL_BLOCK_SIG_LOW_S_VERSION = 60018;
+
 #endif
