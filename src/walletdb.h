@@ -117,6 +117,10 @@ public:
     DBErrors LoadWallet(CWallet* pwallet);
     static bool Recover(CDBEnv& dbenv, std::string filename, bool fOnlyKeys);
     static bool Recover(CDBEnv& dbenv, std::string filename);
+
+    bool WriteStakeForCharityEnabled(bool fStakeForCharity);
+    bool WriteStakeForCharityPercentage(uint64_t nStakeForCharityPercent);
+    bool WriteStakeForCharityAddress(std::string StakeForCharityAddress);
 };
 
 bool BackupWallet(const CWallet& wallet, const std::string& strDest);

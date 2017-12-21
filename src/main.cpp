@@ -2339,6 +2339,12 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 
     LogPrintf("ProcessBlock: ACCEPTED\n");
 
+	// If turned on stakeforcharity, send a portion of stake reward to savings account address
+	if (pwalletMain->fStakeForCharity)
+		if (!pwalletMain->StakeForCharity() )
+			printf("ERROR While trying to send portion of stake reward to savings account");
+	
+
     // ppcoin: if responsible for sync-checkpoint send it
     if (pfrom && !CSyncCheckpoint::strMasterPrivKey.empty())
         Checkpoints::SendSyncCheckpoint(Checkpoints::AutoSelectSyncCheckpoint());

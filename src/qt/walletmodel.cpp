@@ -313,6 +313,21 @@ bool WalletModel::backupWallet(const QString &filename)
     return BackupWallet(*wallet, filename.toLocal8Bit().data());
 }
 
+// getStakeForCharityPercent returns the wallet int setting nStakeForCharityPercent.
+int WalletModel::getStakeForCharityPercent()
+{
+	return wallet->nStakeForCharityPercent;
+}
+
+// getStakeForCharityAddress returns a string of the staking charity address.
+QString WalletModel::getStakeForCharityAddress()
+{
+	if (!wallet->StakeForCharityAddress.IsValid())
+		return "Not Saving";
+	else
+		return wallet->StakeForCharityAddress.ToString().c_str();
+}
+
 // Handlers for core signals
 static void NotifyKeyStoreStatusChanged(WalletModel *walletmodel, CCryptoKeyStore *wallet)
 {

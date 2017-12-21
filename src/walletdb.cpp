@@ -146,6 +146,26 @@ bool CWalletDB::WriteMinVersion(int nVersion)
     return Write(std::string("minversion"), nVersion);
 }
 
+// --> Begin Stake For Charity
+bool CWalletDB::WriteStakeForCharityEnabled(bool fStakeForCharity)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("stakeForCharityEnabled"), fStakeForCharity);
+}
+
+bool CWalletDB::WriteStakeForCharityPercentage(uint64_t nStakeForCharityPercent)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("stakeForCharityPercent"), nStakeForCharityPercent);
+}
+
+bool CWalletDB::WriteStakeForCharityAddress(string StakeForCharityAddress)
+{
+    nWalletDBUpdated++;
+    return Write(std::string("stakeForCharityAddress"), StakeForCharityAddress);
+}
+// --> End Stake For Charity
+
 bool CWalletDB::ReadAccount(const string& strAccount, CAccount& account)
 {
     account.SetNull();
@@ -544,6 +564,20 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
         else if (strType == "orderposnext")
         {
             ssValue >> pwallet->nOrderPosNext;
+        }
+        else if (strType == "stakeForCharityEnabled") 
+        {
+            // TODO: https://stackoverflow.com/a/3613424/1475153 do we need to convert to boolean?
+            ssValue >> pwallet->fStakeForCharity;
+        }
+        else if (strType == "stakeForCharityPercent") 
+        {
+            // TODO: https://stackoverflow.com/a/7664227/1475153 do we need to convert to an int?
+            ssValue >> pwallet->nStakeForCharityPercent;
+        }
+        else if (strType == "stakeForCharityAddress") 
+        {
+            ssValue >> pwallet->StakeForCharityAddress;
         }
     } catch (...)
     {
