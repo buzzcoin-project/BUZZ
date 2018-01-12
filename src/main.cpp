@@ -588,9 +588,10 @@ static const int64_t TransactionFeeDividerSelf = 1*COIN; //divider for sending a
 
 static const time_t PercentageFeeSendingBegin = 1400000000;
 static const time_t PercentageFeeRelayBegin = 1400000000;
-static const time_t ForkTiming = 1454284800;
-static const time_t Fork2 = 1505877351;
-static const time_t Fork3 = 1506157251;
+
+static const time_t LEGACY_FORK_ONE = 1454284800;
+static const time_t LEGACY_FORK_TWO = 1505877351;
+static const time_t LEGACY_FORK_THREE = 1506157251;
 
 //int64_t GetMinSendFee(const int64_t nValue)
 //{
@@ -604,17 +605,15 @@ static const time_t Fork3 = 1506157251;
 //               nMinFee = nValue / 2500;
 //        }
 //    }
-//    
 //    return nMinFee;
 //}
-
 
 int64_t GetMinFee(const CTransaction& tx, unsigned int nBlockSize, enum GetMinFee_mode mode, unsigned int nBytes)
 {
 	int64_t TransactionFeeDivider;
-	time_t t=time(NULL);
-        if(t>ForkTiming)
-	{
+	time_t timeNow = time(NULL);
+
+    if(timeNow > LEGACY_FORK_ONE) {
 		TransactionFeeDivider = TransactionFeeDivider_V2;
 	} else {
         TransactionFeeDivider = TransactionFeeDivider_V1;
@@ -629,8 +628,7 @@ int64_t GetMinFee(const CTransaction& tx, unsigned int nBlockSize, enum GetMinFe
         if (txout.nValue < 100)
             nMinFee += nBaseFee;
 
-    if(t > PercentageFeeRelayBegin || (t > PercentageFeeSendingBegin && mode==GMF_SEND) )  
-    {
+    if(timeNow > PercentageFeeRelayBegin || (timeNow > PercentageFeeSendingBegin && mode==GMF_SEND) ) {
         int64_t nNewMinFee = 0;
     
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
@@ -641,36 +639,34 @@ int64_t GetMinFee(const CTransaction& tx, unsigned int nBlockSize, enum GetMinFe
 
             BOOST_FOREACH(const CTxIn& txin, tx.vin)
             {
-                if(txin.prevout.hash == txout.GetHash())
-                {        
+                if(txin.prevout.hash == txout.GetHash()) {        
                     found=true;
-                }
-                else
-                {
+                } else {
                     found=false;
                 }
             }
-            if(!found)
-            {
+
+            if(!found) {
                 // TODO: IMPROVE
-                if (t > Fork3){
+                if (timeNow > LEGACY_FORK_THREE){
                     nNewMinFee = (txout.nValue / 100000) * 1;
-                } 
-                else {
+                } else {
                     nNewMinFee = (txout.nValue / 100) * 25;
                 }
-                
-
             }
-            if (t > Fork3){nNewMinFee = (txout.nValue /100000) * 1;}
-            else {nNewMinFee = (txout.nValue / 100) * 25;}
+
+            if (timeNow > LEGACY_FORK_THREE){
+                nNewMinFee = (txout.nValue /100000) * 1;
+            } else {
+                nNewMinFee = (txout.nValue / 100) * 25;
+            }
 }
         nMinFee += nNewMinFee;
     }
-
-    if(nMinFee > COIN*1000000000) // max 1 billion coins fee.
-    {
-        nMinFee=COIN*1000000000;
+    
+    // max 1 billion coins fee.
+    if(nMinFee > COIN * 1000000000) {
+        nMinFee = COIN * 1000000000;
     }
 	
     if (!MoneyRange(nMinFee)) {
