@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>370</height>
+    <width>505</width>
+    <height>329</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,16 +51,36 @@
      <x>30</x>
      <y>40</y>
      <width>451</width>
-     <height>231</height>
+     <height>151</height>
     </rect>
    </property>
    <property name="lineWidth">
     <number>1</number>
    </property>
    <property name="text">
-    <string>BUZZcoin is an open source token project created for use solely within the BUZZ ecosystem. The Team as well as the Token and wallet developers are not responsible for your holdings, and or any lost or burned coins for any reasons, including lost private keys, malware, sending to invalid addresses, shutting down of exchanges, or any other scenario which results in lost tokens. To be safe we recommend storing coins only in the official wallet and properly backing up wallet data.
-
-Even then, by using BUZZ you acknowledge the inherent risks within the cryptocurrency landscape and understand BUZZ developers cannot be held liable for lost coins. Only download the wallet from the links provided on the official website https://www.buzzcoin.info if you downloaded the wallet from any other sources, you are taking your own risks, and there is no guarantee these are not phishing or scam attempts.</string>
+    <string>Buzzcoin is an open source token project created for use solely within the BUZZ ecosystem. Token and wallet developers are not responsible for any lost or burned coins for any reasons, including lost private keys, malware, sending to invalid addresses, shutting down of exchanges, or any other scenario which results in lost tokens. To be safe we recommend storing coins only in the official wallet and properly backing up wallet data. Even then, by using BUZZ you acknowledge the inherent risks within the cryptocurrency landscape and understand BUZZ developers cannot be held liable for lost coins.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>190</y>
+     <width>451</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="lineWidth">
+    <number>1</number>
+   </property>
+   <property name="text">
+    <string>If you download the wallet from any sources other than the links provided on the official website, you are responsible for taking your own risks, and we cannot guarantee these are not phishing or scam attempts.</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -73,7 +93,7 @@ Even then, by using BUZZ you acknowledge the inherent risks within the cryptocur
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>290</y>
+     <y>250</y>
      <width>87</width>
      <height>20</height>
     </rect>
@@ -86,7 +106,7 @@ Even then, by using BUZZ you acknowledge the inherent risks within the cryptocur
    <property name="geometry">
     <rect>
      <x>320</x>
-     <y>320</y>
+     <y>280</y>
      <width>150</width>
      <height>32</height>
     </rect>
@@ -102,7 +122,7 @@ Even then, by using BUZZ you acknowledge the inherent risks within the cryptocur
    <property name="geometry">
     <rect>
      <x>160</x>
-     <y>320</y>
+     <y>280</y>
      <width>150</width>
      <height>32</height>
     </rect>

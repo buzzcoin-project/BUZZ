@@ -1070,16 +1070,16 @@ int64_t GetProofOfWorkReward(int64_t nFees, CBlockIndex* pindex)
     time_t SOME_RANDOM_LEGACY_FORK = 1505852400;
 
     if (t > SOME_RANDOM_LEGACY_FORK) {
-        if (nSubsidy + fCurrentSupply >= 20000000000) {
-            return 20000000000 - fCurrentSupply;
+        if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
+            return MAX_MONEY - fCurrentSupply;
         }
 
-        if (fCurrentSupply <= 20000000000) {
+        if (fCurrentSupply <= MAX_MONEY) {
             return nSubsidy;
         }
     }
     
-    if (fCurrentSupply >= 20000000000) {
+    if (fCurrentSupply >= MAX_MONEY) {
         return 0;
     }
 
@@ -1095,8 +1095,8 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, CBlockIndex* pind
 
     double fCurrentSupply = GetCoinSupplyFromAmount(pindex->pprev ? pindex->pprev->nMoneySupply : pindex->nMoneySupply);
 
-    if (nSubsidy + fCurrentSupply >= 20000000000) {
-        nSubsidy = 20000000000 - fCurrentSupply;
+    if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
+        nSubsidy = MAX_MONEY - fCurrentSupply;
     }
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);

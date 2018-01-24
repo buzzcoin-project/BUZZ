@@ -1338,7 +1338,7 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     if (
         (nCurrentHeight % 1200 == 0 && fCurrentSupply <= 10000000000) ||
         (nCurrentHeight % 820 == 0 && fCurrentSupply >= 10000000000 && fCurrentSupply <= 15000000000) ||
-        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= 20000000000)
+        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= MAX_MONEY)
     ) {
         if (fDebug)
             LogPrintf("GetCoinYearReward(): PowerBlock nCurrentHeight=%d yearReward=1200\n", nCurrentHeight);
@@ -1347,7 +1347,7 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     }
 
     // no reward after 20b
-    if (fCurrentSupply >= 20000000000) {
+    if (fCurrentSupply >= MAX_MONEY) {
         if (fDebug)
             LogPrintf("GetCoinYearReward(): Staking reward disabled.\n");
 
@@ -1355,9 +1355,9 @@ inline int64_t GetCoinYearReward(CBlockIndex* pindex) {
     }
 
     if (fDebug)
-        LogPrintf("GetCoinYearReward(): yearReward=%.8f\n", 1200 - (1200 * (fCurrentSupply/20000000000)));
+        LogPrintf("GetCoinYearReward(): yearReward=%.8f\n", 1200 - (1200 * (fCurrentSupply/MAX_MONEY)));
 
-    return max(1200 - (1200 * (fCurrentSupply/20000000000)), 2.5) * CENT;
+    return max(1200 - (1200 * (fCurrentSupply/MAX_MONEY)), 2.5) * CENT;
 }
 
 // returns the minimum stake age based on 8 hours of time
@@ -1379,7 +1379,7 @@ inline int GetMinStakeAge(CBlockIndex* pindex)
     if (
         (nCurrentHeight % 1200 == 0 && fCurrentSupply <= 10000000000) ||
         (nCurrentHeight % 820 == 0 && fCurrentSupply >= 10000000000 && fCurrentSupply <= 15000000000) ||
-        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= 20000000000)
+        (nCurrentHeight % 650 == 0 && fCurrentSupply >= 15000000000 && fCurrentSupply <= MAX_MONEY)
     ) {
         if (fDebug)
             LogPrintf("GetMinStakeAge(): Instant Maturation! fCurrentSupply=%.8f minStakeAge=0\n", fCurrentSupply);
