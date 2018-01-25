@@ -17,6 +17,8 @@ using namespace std;
 #define MESSAGE_START_SIZE 4
 typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
+inline bool TestNet();
+
 class CAddress;
 class CBlock;
 
@@ -68,8 +70,13 @@ public:
     virtual const vector<CAddress>& FixedSeeds() const = 0;
     int RPCPort() const { return nRPCPort; }
     int LastPOWBlock() const { return nLastPOWBlock; }
-    int PreStabilityRewardEnsuranceBlock() const { return nPreStabilityRewardEnsuranceBlock; }
-    int StabilitySoftFork() const { return nStabilityForkBlock; }
+    int PreStabilityRewardEnsuranceBlock() const {
+        return ( TestNet() ? 25 : nPreStabilityRewardEnsuranceBlock ); }
+    int StabilitySoftFork() const {
+        return ( TestNet() ? 35 : nStabilityForkBlock ); }
+    int ThreeOhFix() const {
+        return ( TestNet() ? 45 : nThreeOhFix ); }
+
 protected:
     CChainParams() {};
 
@@ -87,6 +94,7 @@ protected:
     int nLastPOWBlock;
     int nStabilityForkBlock;
     int nPreStabilityRewardEnsuranceBlock;
+    int nThreeOhFix;
 };
 
 /**

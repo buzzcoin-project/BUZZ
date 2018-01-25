@@ -662,15 +662,15 @@ int64_t GetMinFee(const CTransaction& tx, unsigned int nBlockSize, enum GetMinFe
                 
 
             }
-            if (t > Fork3){nNewMinFee = (txout.nValue /100000) * 1;}
+            if (t > Fork3){nNewMinFee = (txout.nValue / 100000) * 1;}
             else {nNewMinFee = (txout.nValue / 100) * 25;}
 }
         nMinFee += nNewMinFee;
     }
 
-    if(nMinFee > COIN*1000000000) // max 1 billion coins fee.
+    if( nMinFee > COIN * ONE_BILLION ) // max 1 billion coins fee.
     {
-        nMinFee=COIN*1000000000;
+        nMinFee = COIN * ONE_BILLION;
     }
 	
     if (!MoneyRange(nMinFee)) {
@@ -1056,6 +1056,10 @@ int64_t GetProofOfWorkReward(int64_t nFees, CBlockIndex* pindex)
     if (TestNet()) {
         // We mine 33K every block up to ~10M
         if(pindexBest->nHeight <= 300) {
+            if (fDebug) {
+                LogPrintf("GetProofOfWorkReward(): ONE_BILLION premine at block %d.", pindexBest->nHeight);
+            }
+
             nSubsidy = 33000 * COIN;
         }
     } else {
@@ -1065,22 +1069,38 @@ int64_t GetProofOfWorkReward(int64_t nFees, CBlockIndex* pindex)
         }
     }
 
-    LogPrint("creation", "GetProofOfWorkReward() : create=%s nSubsidy=%d\n", FormatMoney(nSubsidy), nSubsidy);
+    // if we are equal to or over 20b, we return no subsidy.
+    if (fCurrentSupply >= TWENTY_BILLION) {
+        if (fDebug) {
+            LogPrintf("GetProofOfWorkReward(): currentSupply=%.8f, returning 0 mining subsidy.", fCurrentSupply);
+        }
+        return 0;
+    }
 
+    // Tuesday, 19 September 2017 20:20:00
     time_t SOME_RANDOM_LEGACY_FORK = 1505852400;
 
+    // everything goes into this loop since september 19th, before BUZZ takeover by new devs.
     if (t > SOME_RANDOM_LEGACY_FORK) {
-        if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
-            return MAX_MONEY - fCurrentSupply;
+        // if the subsidy amount plus the current supply goes over 20b
+        // it is nice to give this reward still, just ensure that it does not exceed
+        // 20 bil, so chop it.
+        if (MINING_REWARD + fCurrentSupply >= TWENTY_BILLION) {
+            if (fDebug) {
+                LogPrintf("GetProofOfWorkReward(): nSubsidy exceeds max supply, setting to %.8f.",
+                    (TWENTY_BILLION - fCurrentSupply) * COIN);
+            }
+
+            return (TWENTY_BILLION - fCurrentSupply) * COIN;
         }
 
-        if (fCurrentSupply <= MAX_MONEY) {
+        // this is the current catch all case, as we are 
+        if (fCurrentSupply <= TWENTY_BILLION) {
+            LogPrint("creation", "GetProofOfWorkReward() : create=%s nSubsidy=%d\n",
+                FormatMoney(nSubsidy), nSubsidy);
+
             return nSubsidy;
         }
-    }
-    
-    if (fCurrentSupply >= MAX_MONEY) {
-        return 0;
     }
 
     return nSubsidy + (nFees / 2);
@@ -1091,12 +1111,32 @@ int64_t GetProofOfStakeReward(int64_t nCoinAge, int64_t nFees, CBlockIndex* pind
 {
     int64_t nSubsidy;
 
+    // So basically, we're getting the number of coin per year, divided by the number
+    // of days in a year, multiplied by the coin age (in days) of the stake (prorata).
+    // If the end of the formula looks weird to you, it's because there isn't exactly
+    // 365 days in a year - that would be forgetting the leap years ...
+    // So there's actually 365.2421 days.
+    // "( 365 * 33 + 8 ) / 33" is approximatively 0.2424. "* 33 / ( 365 * 33 + 8 )"
+    // is a way to take this in account without risking losing precision
+    // (ie. without using floats).
+    //
+    // coinAge is the age in days
+    // reward will be maturation time + age in days they were staking multiplied by the percentage
+    // calculated above.
     nSubsidy = nCoinAge * GetCoinYearReward(pindex) * 33 / (365 * 33 + 8);
 
     double fCurrentSupply = GetCoinSupplyFromAmount(pindex->pprev ? pindex->pprev->nMoneySupply : pindex->nMoneySupply);
 
-    if (nSubsidy + fCurrentSupply >= MAX_MONEY) {
-        nSubsidy = MAX_MONEY - fCurrentSupply;
+    // if the subsidy amount plus the current supply goes over 20b
+    // it is nice to give this reward still, just ensure that it does not exceed
+    // 20 bil, so chop it.
+    if (nSubsidy + (fCurrentSupply * COIN) >= (TWENTY_BILLION * COIN)) {
+        if (fDebug) {
+            LogPrintf("GetProofOfWorkReward(): nSubsidy exceeds max supply, setting to %.8f.",
+                (TWENTY_BILLION - fCurrentSupply) * COIN);
+        }
+
+        nSubsidy = (TWENTY_BILLION - fCurrentSupply) * COIN;
     }
 
     LogPrint("creation", "GetProofOfStakeReward(): create=%s nCoinAge=%d\n", FormatMoney(nSubsidy), nCoinAge);
@@ -2987,8 +3027,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
         if (
-            pfrom->nVersion < MIN_PEER_PROTO_VERSION ||
-            (nBestHeight >= Params().StabilitySoftFork() && pfrom->nVersion < MIN_PEER_PROTO_VERSION_V3)
+            pfrom->nVersion < MIN_PEER_PROTO_VERSION
+            || ( nBestHeight >= Params().StabilitySoftFork() && pfrom->nVersion < MIN_PEER_PROTO_VERSION_V3 )
+            || ( nBestHeight >= Params().ThreeOhFix() && pfrom->nVersion < MIN_PEER_PROTO_VERSION_V3_1 )
             )
         {
             // disconnect from peers older than this proto version

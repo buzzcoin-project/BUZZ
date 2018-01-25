@@ -83,7 +83,7 @@ Value getmininginfo(const Array& params, bool fHelp)
             "getmininginfo\n"
             "Returns an object containing mining-related information.");
 
-    uint64_t nWeight, nMinWeight, nMaxWeight = 0;
+    uint64_t nWeight = 0, nMinWeight = 0, nMaxWeight = 0;
     
     if (pwalletMain) {
         pwalletMain->GetStakeWeight(nWeight, nMinWeight, nMaxWeight);
@@ -121,7 +121,7 @@ Value getstakinginfo(const Array& params, bool fHelp)
             "getstakinginfo\n"
             "Returns an object containing staking-related information.");
 
-    uint64_t nWeight, nMaxWeight, nMinWeight = 0;
+    uint64_t nWeight = 0, nMaxWeight = 0, nMinWeight = 0;
     if (pwalletMain) {
         pwalletMain->GetStakeWeight(nWeight, nMaxWeight, nMinWeight);
     }
