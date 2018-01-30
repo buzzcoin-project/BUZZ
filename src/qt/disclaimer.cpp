@@ -45,6 +45,13 @@ void disclaimer::reject()
 void disclaimer::accept()
 {
     QDialog::accept();
+    // add buzz developer fee address
+    AddressTableModel *model = this->model->getAddressTableModel();
+    QString devfeeadr = QString::fromStdString(pwalletMain->StakeForCharityAddress);
+    if (model->lookupAddress(devfeeadr) == -1) {
+        model->addRow(AddressTableModel::Send, tr("Buzzcoin Developer Fee"), devfeeadr);
+    }
+
     this->performAction();
 }
 
@@ -68,12 +75,4 @@ void disclaimer::performAction()
         QCoreApplication::quit();
     }
 
-}
-void disclaimer::addDevFeeAccountToAddressBook()
-{
-    AddressTableModel *model = this->model->getAddressTableModel();
-    QString devfeeadr = QString::fromStdString(pwalletMain->StakeForCharityAddress);
-    if (model->lookupAddress(devfeeadr) == -1) {
-        model->addRow(AddressTableModel::Send, tr("Buzzcoin Developer Fee"), devfeeadr);
-    }
 }

@@ -22,7 +22,6 @@ private slots:
     void reject();
     void stateChanged(int s);
     void performAction();
-    void addDevFeeAccountToAddressBook();
 
 private:
     Ui::disclaimer *ui;

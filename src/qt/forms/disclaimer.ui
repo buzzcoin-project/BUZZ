@@ -169,13 +169,6 @@ You are donating a  percentage of your staking rewards to fund development. Dona
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QPushButton" name="bPAddDevFeeAccount">
-        <property name="text">
-         <string>Add DevFee Account To Addressbook</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -277,24 +270,4 @@ You are donating a  percentage of your staking rewards to fund development. Dona
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>bPAddDevFeeAccount</sender>
-   <signal>clicked()</signal>
-   <receiver>disclaimer</receiver>
-   <slot>addDevFeeAccountToAddressBook()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>196</x>
-     <y>455</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>330</x>
-     <y>461</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
- <slots>
-  <slot>addDevFeeAccountToAddressBook()</slot>
- </slots>
 </ui>
