@@ -1,4 +1,4 @@
-BuzzCoin v3.0
+BuzzCoin v3.0.1
 
 Copyright (c) 2013 NovaCoin Developers Copyright (c) 2011-2012 PPCoin Developers
 Copyright (c) 2017 BUZZ Developers Distributed under the MIT/X11 software
