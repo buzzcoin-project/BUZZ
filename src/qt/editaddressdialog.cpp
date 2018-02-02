@@ -18,18 +18,18 @@ EditAddressDialog::EditAddressDialog(Mode mode, QWidget *parent) :
     switch(mode)
     {
     case NewReceivingAddress:
-        setWindowTitle(tr("New receiving address"));
+        setWindowTitle(tr("New receiving address, v3.1.1"));
         ui->addressEdit->setEnabled(false);
         break;
     case NewSendingAddress:
-        setWindowTitle(tr("New sending address"));
+        setWindowTitle(tr("New sending address, v3.1.1"));
         break;
     case EditReceivingAddress:
-        setWindowTitle(tr("Edit receiving address"));
+        setWindowTitle(tr("Edit receiving address, v3.1.1"));
         ui->addressEdit->setEnabled(false);
         break;
     case EditSendingAddress:
-        setWindowTitle(tr("Edit sending address"));
+        setWindowTitle(tr("Edit sending address, v3.1.1"));
         break;
     }
 

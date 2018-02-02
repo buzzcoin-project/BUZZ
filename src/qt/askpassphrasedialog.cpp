@@ -35,7 +35,7 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passLabel1->hide();
             ui->passEdit1->hide();
             ui->warningLabel->setText(tr("Enter the new passphrase to the wallet.<br/>Please use a passphrase of <b>ten or more random characters</b>, or <b>eight or more words</b>."));
-            setWindowTitle(tr("Encrypt wallet"));
+            setWindowTitle(tr("Encrypt wallet, v3.1.1"));
             break;
         case UnlockStaking:
             ui->stakingCheckBox->setChecked(true);
@@ -47,7 +47,7 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passEdit2->hide();
             ui->passLabel3->hide();
             ui->passEdit3->hide();
-            setWindowTitle(tr("Unlock wallet"));
+            setWindowTitle(tr("Unlock wallet, v3.1.1"));
             break;
         case Decrypt:   // Ask passphrase
             ui->warningLabel->setText(tr("This operation needs your wallet passphrase to decrypt the wallet."));
@@ -55,10 +55,10 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
             ui->passEdit2->hide();
             ui->passLabel3->hide();
             ui->passEdit3->hide();
-            setWindowTitle(tr("Decrypt wallet"));
+            setWindowTitle(tr("Decrypt wallet, v3.1.1"));
             break;
         case ChangePass: // Ask old passphrase + new passphrase x2
-            setWindowTitle(tr("Change passphrase"));
+            setWindowTitle(tr("Change passphrase, v3.1.1"));
             ui->warningLabel->setText(tr("Enter the old and new passphrase to the wallet."));
             break;
     }

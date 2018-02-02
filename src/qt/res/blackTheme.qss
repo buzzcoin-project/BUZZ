@@ -1,0 +1,202 @@
+QWidget {
+    background: rgb(41,44,48);
+    color: rgb(255,255,255);
+}
+
+QFrame {
+    border: none;
+}
+
+QComboBox {
+    color: rgb(255,255,255);
+    padding: 2px 4px;
+    border: 1px solid rgb(0,0,0);
+}
+
+QComboBox QAbstractItemView::item {
+    color: rgb(255,255,255);
+}
+
+QComboBox::drop-down 
+{
+    border: 0px;
+}
+
+QComboBox::down-arrow {
+    image: url(:/icons/arrow-down);
+    width: 12px;
+    height: 12px;
+    right: 2px;
+}
+
+QPushButton {
+    background: rgb(255,221,85);
+    color: rgb(0,0,0);
+    border: none;
+    margin: 0;
+    padding: 4px 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+QPushButton:hover {
+    border: none;
+    background: rgb(0,0,0);
+    color: rgb(255,255,255);
+}
+
+QPushButton:pressed {
+    background: rgb(0,0,0);
+    color: rgb(255,221,85);
+    border-color: rgb(255,221,85);
+}
+
+QPushButton:disabled {
+    background: rgb(63,67,72);
+    border: none;
+    color: rgb(194,194,194);
+}
+
+QDoubleSpinBox {
+    background: rgb(63,67,72);
+    color: rgb(255,255,255);
+    border-color: rgb(194,194,194);
+}
+
+QLineEdit {
+    background: rgb(63,67,72);
+    color: rgb(255,255,255);
+    border-color: rgb(194,194,194);
+}
+
+QTextEdit {
+    background: rgb(63,67,72);
+    color: rgb(255,255,255);
+}
+
+QPlainTextEdit {
+    background: rgb(63,67,72);
+    color: rgb(255,255,255);
+}
+
+QMenuBar {
+    background: rgb(41,44,48);
+    color: rgb(110,116,126);
+}
+
+QMenu {
+    background: rgb(24,26,30);
+    color: rgb(222,222,222);
+}
+
+QMenu::item:selected {
+    background-color: rgb(255,221,85);
+}
+
+QLabel {
+    color: rgb(120,127,139);
+}
+
+QScrollBar {
+    color: rgb(255,255,255);
+}
+
+QSpinBox {
+    background: rgb(63,67,72);
+    color: rgb(255,255,255);
+    border-color: rgb(194,194,194);
+}
+
+QCheckBox {
+    color: rgb(120,127,139);
+}
+
+QRadioButton {
+    color: rgb(120,127,139);
+}
+
+QTabBar::tab {
+    color: rgb(255,221,85);
+    border: 1px solid rgb(255,221,85);
+    border-bottom: none;
+    padding: 5px;
+}
+
+QTabBar::tab:selected {
+    background: rgb(41,44,48);
+}
+
+QTabBar::tab:!selected {
+    background: rgb(24,26,30);
+    margin-top: 2px;
+}
+
+QTabWidget::pane {
+    border: 1px solid rgb(255,221,85);
+}
+
+QToolButton {
+    background: transparent;
+    color: rgb(116,122,134);
+    border: none;
+    
+    border-left-color: transparent;
+    border-left-style: solid;
+    border-left-width: 6px;
+    
+    border-right-color: transparent;
+    border-right-style: solid;
+    border-right-width: 6px;
+    
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+QToolButton:checked {
+    color: rgb(255,255,255);
+    border: none;
+    
+    border-left-color: rgb(255,221,85);
+    border-left-style: solid;
+    border-left-width: 6px;
+    
+    border-right-color: rgb(255,221,85);
+    border-right-style: solid;
+    border-right-width: 6px;
+}
+
+QProgressBar {
+    color: rgb(0,0,0);
+    text-transform: uppercase;
+    border-width: 3px;
+    border-style: solid;
+}
+
+QProgressBar::chunk {
+    background: rgb(255,221,85);
+}
+
+QTreeView::item {
+    background: rgb(41,44,48);
+    color: rgb(212,213,213);
+}
+
+QTreeView::item:selected {
+    background-color: rgb(255,221,85);
+}
+
+QTableView {
+    background: rgb(66,71,78);
+    color: rgb(212,213,213);
+    gridline-color: rgb(157,160,165);
+}
+
+QHeaderView::section {
+    background: rgb(24,36,30);
+    color: rgb(255,255,255);
+}
+
+QToolBar {
+    background: rgb(24,26,30);
+    border: none;
+}

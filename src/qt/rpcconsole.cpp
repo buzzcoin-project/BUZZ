@@ -28,10 +28,10 @@ const struct {
     const char *url;
     const char *source;
 } ICON_MAPPING[] = {
-    {"cmd-request", ":/icons/tx_input"},
-    {"cmd-reply", ":/icons/tx_output"},
-    {"cmd-error", ":/icons/tx_output"},
-    {"misc", ":/icons/tx_inout"},
+    {"cmd-request", ":/icons/black/tx_input"},
+    {"cmd-reply", ":/icons/black/tx_output"},
+    {"cmd-error", ":/icons/black/tx_output"},
+    {"misc", ":/icons/black/tx_inout"},
     {NULL, NULL}
 };
 
