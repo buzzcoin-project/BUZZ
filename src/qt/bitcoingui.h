@@ -101,6 +101,7 @@ private:
     QAction *aboutQtAction;
     QAction *openRPCConsoleAction;
     QAction *checkForUpdateAction;
+    QAction *visitExplorerAction;
     QAction *openBootstrapFolderAction;
     
     QSystemTrayIcon *trayIcon;
@@ -192,6 +193,9 @@ private slots:
 
     /** Open Update Page **/
     void checkForUpdate();
+
+    /** Open explorer **/
+    void visitExplorer();
     
     /** Open Bootstrap Folder **/
     void openBootstrapFolder();
