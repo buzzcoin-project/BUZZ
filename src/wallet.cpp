@@ -1252,6 +1252,20 @@ bool CWallet::StakeForCharity()
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
+            
+            // Read block header
+            CBlock block;
+            // Find the block in the index
+            map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(block.GetHash());
+            CBlockIndex* pindex = (*mi).second;
+            if (!pindex) {
+                return false;
+            }
+            
+            if (pindex->nHeight <= Params().ThreeOhFix()) {
+                return false;
+            }
+
             if (pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() == 0 && pcoin->GetDepthInMainChain() == nCoinbaseMaturity + 20)
             {
                 // Calculate Amount for Charity
