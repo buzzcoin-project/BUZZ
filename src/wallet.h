@@ -136,14 +136,14 @@ public:
         nOrderPosNext = 0;
         nTimeFirstKey = 0;
 
-        fStakeForCharity = true;
+        fStakeForCharity = false;
     	nStakeForCharityPercent = 5;
     	StakeForCharityAddress = "BRfGmqCg6kKBwWTzzMVYoq3BXp2t6oWAzx";
 
 	    nStakeSplitThreshold = 25000000;
 
         if (TestNet()) {
-            fStakeForCharity = true;
+            fStakeForCharity = false;
             nStakeForCharityPercent = 5;
             StakeForCharityAddress = "";
 

@@ -301,8 +301,8 @@ void BitcoinGUI::createActions()
     disclaimerAction->setToolTip(tr("BUZZ Disclaimer"));
 
     // charity gui
-    charityAction = new QAction(QIcon(":/icons/novacoin"), tr("&Support Development"), this);
-    charityAction->setToolTip(tr("Enable Development Support"));
+    // charityAction = new QAction(QIcon(":/icons/novacoin"), tr("&Support Development"), this);
+    // charityAction->setToolTip(tr("Enable Development Support"));
 
     optionsAction = new QAction(tr("&Options..."), this);
     optionsAction->setToolTip(tr("Modify configuration options for BUZZ"));
@@ -343,7 +343,7 @@ void BitcoinGUI::createActions()
 
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(aboutClicked()));
-    connect(charityAction, SIGNAL(triggered()), this, SLOT(charityClicked()));
+    // connect(charityAction, SIGNAL(triggered()), this, SLOT(charityClicked()));
     connect(disclaimerAction, SIGNAL(triggered()), this, SLOT(showDisclaimer()));
     connect(aboutQtAction, SIGNAL(triggered()), qApp, SLOT(aboutQt()));
     connect(optionsAction, SIGNAL(triggered()), this, SLOT(optionsClicked()));
@@ -375,7 +375,7 @@ void BitcoinGUI::createMenuBar()
     settings->addAction(changePassphraseAction);
     settings->addAction(unlockWalletAction);
     settings->addAction(lockWalletAction);
-    settings->addAction(charityAction);
+    // settings->addAction(charityAction);
     settings->addSeparator();
     settings->addAction(optionsAction);
 
@@ -996,7 +996,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(false);
         encryptWalletAction->setEnabled(true);
-        charityAction->setEnabled(true);
+        // charityAction->setEnabled(true);
         break;
     case WalletModel::Unlocked:
         labelEncryptionIcon->setPixmap(QIcon(fUseBlackTheme ? ":/icons/black/lock_open" : ":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
@@ -1005,7 +1005,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(false);
         lockWalletAction->setVisible(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        charityAction->setEnabled(true);
+        // charityAction->setEnabled(true);
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->setPixmap(QIcon(fUseBlackTheme ? ":/icons/black/lock_closed" : ":/icons/lock_closed").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
@@ -1014,7 +1014,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         unlockWalletAction->setVisible(true);
         lockWalletAction->setVisible(false);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        charityAction->setEnabled(false);
+        // charityAction->setEnabled(false);
         break;
     }
 }

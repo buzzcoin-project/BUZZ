@@ -87,7 +87,7 @@ private:
     QAction *signMessageAction;
     QAction *verifyMessageAction;
     QAction *aboutAction;
-    QAction *charityAction;
+    // QAction *charityAction;
     QAction *disclaimerAction;
     QAction *receiveCoinsAction;
     QAction *optionsAction;
