@@ -43,6 +43,7 @@ unsigned int nModifierInterval = 8 * 60; // time to elapse before new modifier i
 int nCoinbaseMaturity = 188;
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
+int nLastCharitySendHeight = 0; 
 
 uint256 nBestChainTrust = 0;
 uint256 nBestInvalidTrust = 0;

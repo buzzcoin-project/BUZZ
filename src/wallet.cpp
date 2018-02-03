@@ -1249,18 +1249,20 @@ bool CWallet::StakeForCharity()
 
     {
         LOCK(cs_wallet);
-        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-        {
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it) {
+
+            if (nBestHeight <= nLastCharitySendHeight) {
+                return false;
+            }
+
             const CWalletTx* pcoin = &(*it).second;
-            if (pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() == 0 && pcoin->GetDepthInMainChain() == nCoinbaseMaturity + 20)
-            {
+            if (pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() == 0 && pcoin->GetDepthInMainChain() == nCoinbaseMaturity + 20) {
                 // Calculate Amount for Charity
-                nNet = (( pcoin->GetCredit() - pcoin->GetDebit()) * nStakeForCharityPercent) / 100;
+                nNet = ((pcoin->GetCredit() - pcoin->GetDebit()) * nStakeForCharityPercent) / 100;
                 // TODO: how can we remove transaction fee amount from this?
 
                 // Do not send if amount is too low
-                if (nNet < MIN_TX_FEE )
-                {
+                if (nNet < MIN_TX_FEE ) {
                     LogPrint("s4c",
                         "StakeForCharity(): Amount: %s is below MIN_TX_FEE: %s\n",
                         FormatMoney(nNet).c_str(),
@@ -1277,6 +1279,8 @@ bool CWallet::StakeForCharity()
                 );
 
                 SendMoneyToDestination(charityAddress.Get(), nNet, wtx, false, true);
+
+                nLastCharitySendHeight = nBestHeight;
             }
         }
     }
