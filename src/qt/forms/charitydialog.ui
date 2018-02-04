@@ -92,7 +92,7 @@
     <number>1</number>
    </property>
    <property name="text">
-    <string>You are donating a  percentage of your staking rewards to fund development. Donations only take place after 17b supply. These funds will be used to pay for costs including: development, infrastructure, project materials, marketing and more.</string>
+    <string>You are donating a percentage of your staking rewards to fund development. This is not taken from your funds, but only on staking rewards generated about 17b supply. These funds will be used to pay for costs including: development, infrastructure, project materials, marketing and more.</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
